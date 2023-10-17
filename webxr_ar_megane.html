@@ -2,12 +2,13 @@
 <title>AR plane-detection</title>
 </head><body>
 <div id="info">
-AR plane-detection - forked <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> ar - plane detection<br>
+AR megane - plane-detection - forked <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> ar - plane detection<br>
 </div>
 <style>
 body {
 	background-color: #333;
 	color: #fff;
+	margin: 0;
 }
 a {
 	color: #eee !important;
@@ -153,17 +154,7 @@ renderer.xr.addEventListener("planesdetected", function (e) {
 	});
 });
 
-renderer.setAnimationLoop(() => {
-	renderer.render(scene, camera);
-});
-
-addEventListener("resize", () => {
-	camera.aspect = innerWidth / innerHeight;
-	camera.updateProjectionMatrix();
-	renderer.setSize(innerWidth, innerHeight);
-});
-
-//
+// add objects
 
 const group = new THREE.Group();
 scene.add(group);
@@ -188,11 +179,29 @@ for (const object of objs) {
 	object.rotation.x = Math.random() * 2 * Math.PI;
 	object.rotation.y = Math.random() * 2 * Math.PI;
 	object.rotation.z = Math.random() * 2 * Math.PI;
-
-	object.scale.setScalar(5);
-	
+	object.scale.setScalar(5);	
 	group.add(object);
 }
+
+const animation = () => {
+	for (const object of objs) {
+		object.rotation.x += .01;
+	}
+};
+
+//
+
+renderer.setAnimationLoop(() => {
+	animation();
+	renderer.render(scene, camera);
+});
+
+addEventListener("resize", () => {
+	camera.aspect = innerWidth / innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize(innerWidth, innerHeight);
+});
+
 
 </script>
 </body>
