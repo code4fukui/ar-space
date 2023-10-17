@@ -1,0 +1,139 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="icon" href="data:">
+<title>AR plane-detection</title>
+</head><body>
+<div id="info">
+AR plane-detection - forked <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> ar - plane detection<br>
+</div>
+<style>
+body {
+	background-color: #333;
+	color: #fff;
+}
+a {
+	color: #eee !important;
+}
+</style>
+
+<script type="importmap">
+{
+	"imports": {
+		"three": "https://code4fukui.github.io/three.js/build/three.module.js",
+		"three/addons/": "https://code4fukui.github.io/three.js/examples/jsm/"
+	}
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { ARButton } from "three/addons/webxr/ARButton.js";
+import { log } from "./log.js";
+
+const container = document.createElement("div");
+document.body.appendChild(container);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.01, 20);
+
+const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+light.position.set(0.5, 1, 0.25);
+scene.add(light);
+
+//
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+container.appendChild(renderer.domElement);
+
+//
+const meshesAdded = new Set();
+
+document.body.appendChild(ARButton.createButton(renderer, {
+	requiredFeatures: ["local-floor", "hit-test", "mesh-detection"]
+}));
+renderer.xr.addEventListener("sessionstart", function () {
+	camera.position.set(0, 0, 0);
+	log("check");
+});
+renderer.xr.addEventListener("planeadded", function (e) {
+	console.log("plane added", e.data);
+	log("padd", e.data);
+});
+renderer.xr.addEventListener("planeremoved", function (e) {
+	console.log("plane removed", e.data);
+});
+renderer.xr.addEventListener("planechanged", function (e) {
+	console.log("plane changed", e.data);
+});
+renderer.xr.addEventListener("meshadded", function (e) {
+	console.log("mesh added", e.data);
+	log("madd", e.data);
+});
+renderer.xr.addEventListener("meshremoved", function (e) {
+	console.log("mesh removed", e.data);
+});
+renderer.xr.addEventListener("meshchanged", function (e) {
+	console.log("mesh changed", e.data);
+});
+
+// from https://qiita.com/wakufactory/items/602bf4bc1ce075e7a279
+// but not worked yet
+let col = 0xf00000;
+const setMeshesAsPolygon = (to, xrmesh, meshPose) => {
+	//pl.forEach(p => {
+		const geometry = new THREE.BufferGeometry();
+		geometry.setAttribute("position", new THREE.BufferAttribute(xrmesh.vertices, 3));
+		geometry.setIndex(xrmesh.indices);
+		const material = new THREE.MeshBasicMaterial({ color: col, opacity: 0.5, side: THREE.FrontSide });
+		const mesh = new THREE.Mesh(geometry, material);
+		col += 32;
+		//mesh.matrix.elements = p[1];
+    mesh.matrix.decompose(mesh.position, mesh.rotation, mesh.scale);
+		//mesh.matrixAutoUpdate = false;
+		//mesh.matrix.fromArray(planePose.transform.matrix);
+    to.add(mesh);
+		console.log(mesh.position);
+		console.log(mesh.rotation);
+
+		// change color by orientation
+		if (Math.abs(mesh.rotation.x) < 0.01) {
+			mesh.material.color = new THREE.Color(0x00f000);
+		}
+		if (Math.abs(Math.abs(mesh.rotation.x) - Math.PI) < 0.01) {
+			mesh.material.color = new THREE.Color(0x0000f0);
+		}
+	//})
+};
+
+renderer.xr.addEventListener("meshdetected", e => {
+//renderer.xr.addEventListener("planedetected", e => {
+	const detectedMeshes = e.data;
+
+	detectedMeshes.forEach(mesh => {
+		if (meshesAdded.has(mesh)) return;
+
+		log("mdetect" + e.data);
+		console.log(`Detected ${detectedMeshes.size} meshes`);
+
+		const referenceSpace = renderer.xr.getReferenceSpace();
+		meshesAdded.add(mesh);
+		const frame = renderer.xr.getFrame();
+		const meshPose = frame.getPose(mesh.meshSpace, referenceSpace);
+		
+		setMeshesAsPolygon(scene, mesh, meshPose);
+	});
+});
+
+renderer.setAnimationLoop(() => {
+	renderer.render(scene, camera);
+});
+
+addEventListener("resize", () => {
+	camera.aspect = innerWidth / innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize(innerWidth, innerHeight);
+});
+
+</script>
+</body>
+</html>
